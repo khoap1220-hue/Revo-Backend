@@ -58,6 +58,30 @@ class ProductInventory(Base):
         """Return unreserved stock available for purchase."""
         return max(0, (self.stock_quantity or 0) - (self.reserved_quantity or 0))
 
+    @property
+    def in_season(self) -> bool:
+        """Return whether the product is currently in season on today's date."""
+        today = date.today()
+        if self.season_start is not None and self.season_end is not None:
+            ref_md = (today.month, today.day)
+            start_md = (self.season_start.month, self.season_start.day)
+            end_md = (self.season_end.month, self.season_end.day)
+            if start_md <= end_md:
+                return start_md <= ref_md <= end_md
+            return ref_md >= start_md or ref_md <= end_md
+        windows = self.__dict__.get("seasonal_windows") or []
+        if windows:
+            ref_md = (today.month, today.day)
+            for win in windows:
+                start_md = (win.start_date.month, win.start_date.day)
+                end_md = (win.end_date.month, win.end_date.day)
+                if start_md <= end_md and (start_md <= ref_md <= end_md):
+                    return True
+                if start_md > end_md and (ref_md >= start_md or ref_md <= end_md):
+                    return True
+            return False
+        return True
+
 
 class SeasonalAvailability(Base):
     """Represents a seasonal harvest/availability window for an inventory item."""
