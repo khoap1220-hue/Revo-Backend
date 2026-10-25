@@ -253,7 +253,7 @@ async def test_async_create_update_adjust_and_list_inventory():
     created = await InventoryService.create(
         db, create_data, reference_date=date(2026, 7, 1)
     )
-    assert created.status == AvailabilityStatus.OUT_OF_SEASON
+    assert created.status == AvailabilityStatus.COMING_SOON
     assert len(created.seasonal_windows) == 1
 
     # Reject invalid update before mutating ORM instance

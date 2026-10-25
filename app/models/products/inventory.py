@@ -38,7 +38,11 @@ class ProductInventory(Base):
     season_start: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     season_end: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     status: Mapped[AvailabilityStatus] = mapped_column(
-        SqlEnum(AvailabilityStatus, name="availability_status_enum"),
+        SqlEnum(
+            AvailabilityStatus,
+            name="availability_status_enum",
+            values_callable=lambda enum_cls: [member.value for member in enum_cls],
+        ),
         nullable=False,
         default=AvailabilityStatus.OUT_OF_STOCK,
     )

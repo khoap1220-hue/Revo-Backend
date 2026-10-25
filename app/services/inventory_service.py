@@ -227,7 +227,7 @@ class InventoryService:
 
         db.add(inventory)
         await db.commit()
-        await db.refresh(inventory)
+        inventory = await cls._reload_inventory(db, inventory)
         return inventory
 
     @classmethod
@@ -246,6 +246,33 @@ class InventoryService:
         return result.scalar_one_or_none()
 
     @classmethod
+    async def _reload_inventory(
+        cls,
+        db: AsyncSession,
+        inventory: ProductInventory,
+        lock: bool = False,
+    ) -> ProductInventory:
+        """Reload an inventory instance with seasonal_windows eagerly populated."""
+        if getattr(inventory, "id", None) is not None and hasattr(db, "execute"):
+            stmt = (
+                select(ProductInventory)
+                .options(selectinload(ProductInventory.seasonal_windows))
+                .where(ProductInventory.id == inventory.id)
+                .execution_options(populate_existing=True)
+            )
+            if lock:
+                stmt = stmt.with_for_update()
+            result = await db.execute(stmt)
+            reloaded = result.scalar_one_or_none()
+            if reloaded is not None:
+                return reloaded
+        if lock:
+            inventory = await cls._reload_inventory(db, inventory, lock=True)
+        else:
+            await db.refresh(inventory)
+        return inventory
+
+    @classmethod
     async def update(
         cls,
         db: AsyncSession,
@@ -254,7 +281,7 @@ class InventoryService:
         reference_date: Optional[date] = None,
     ) -> ProductInventory:
         """Update stock or seasonal window fields safely and recalculate availability status."""
-        await db.refresh(inventory, with_for_update=True)
+        inventory = await cls._reload_inventory(db, inventory, lock=True)
 
         updates = data.model_dump(exclude_unset=True)
         non_nullable = {
@@ -282,7 +309,7 @@ class InventoryService:
 
         cls.sync_inventory_status(inventory, reference_date=reference_date)
         await db.commit()
-        await db.refresh(inventory)
+        inventory = await cls._reload_inventory(db, inventory)
         return inventory
 
     @classmethod
@@ -294,7 +321,7 @@ class InventoryService:
         reference_date: Optional[date] = None,
     ) -> ProductInventory:
         """Increment or decrement product stock with row locking and recalculate status."""
-        await db.refresh(inventory, with_for_update=True)
+        inventory = await cls._reload_inventory(db, inventory, lock=True)
         new_quantity = (inventory.stock_quantity or 0) + delta
         if new_quantity < 0:
             raise ValueError("Stock quantity cannot become negative")
@@ -304,7 +331,7 @@ class InventoryService:
         inventory.stock_quantity = new_quantity
         cls.sync_inventory_status(inventory, reference_date=reference_date)
         await db.commit()
-        await db.refresh(inventory)
+        inventory = await cls._reload_inventory(db, inventory)
         return inventory
 
     @classmethod
