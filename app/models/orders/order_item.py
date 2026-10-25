@@ -8,7 +8,15 @@ from typing import TYPE_CHECKING, Union
 import uuid
 from uuid import UUID
 
-from sqlalchemy import DateTime, ForeignKey, Integer, Numeric, func
+from sqlalchemy import (
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Integer,
+    Numeric,
+    UniqueConstraint,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
@@ -25,6 +33,11 @@ class OrderItem(Base):
     """Line item belonging to an Order with automatic subtotal computation."""
 
     __tablename__ = "order_items"
+    __table_args__ = (
+        UniqueConstraint("order_id", "product_id"),
+        CheckConstraint("quantity > 0"),
+        CheckConstraint("unit_price >= 0"),
+    )
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     order_id: Mapped[UUID] = mapped_column(

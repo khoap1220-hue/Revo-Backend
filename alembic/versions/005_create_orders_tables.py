@@ -80,6 +80,9 @@ def upgrade() -> None:
             onupdate=sa.func.now(),
             nullable=False,
         ),
+        sa.UniqueConstraint("order_id", "product_id"),
+        sa.CheckConstraint("quantity > 0"),
+        sa.CheckConstraint("unit_price >= 0"),
     )
     op.create_index("ix_order_items_order_id", "order_items", ["order_id"])
     op.create_index("ix_order_items_product_id", "order_items", ["product_id"])
@@ -93,3 +96,4 @@ def downgrade() -> None:
     op.drop_index("ix_orders_status", table_name="orders")
     op.drop_index("ix_orders_buyer_id", table_name="orders")
     op.drop_table("orders")
+    sa.Enum(name="order_status").drop(op.get_bind(), checkfirst=True)

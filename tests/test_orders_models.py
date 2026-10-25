@@ -19,6 +19,7 @@ class TestOrderAndCartModels:
     async def test_buyer_can_create_draft_cart_and_persist_order(self, db_session: AsyncSession):
         """Buyers can create orders starting as a temporary cart (status=draft)."""
         buyer = User(
+            username=f"buyer_{uuid4().hex[:8]}",
             email=f"buyer_{uuid4().hex[:8]}@example.com",
             password_hash="hashed_password",
             user_type=UserType.BUYER,
