@@ -2,13 +2,15 @@
 Product inventory and seasonal availability models.
 """
 
+import uuid
 from datetime import date, datetime
 from enum import Enum
-import uuid
 from typing import Optional
 from uuid import UUID
 
-from sqlalchemy import Boolean, Date, DateTime, Enum as SqlEnum, ForeignKey, Integer, String, func
+from sqlalchemy import Boolean, Date, DateTime
+from sqlalchemy import Enum as SqlEnum
+from sqlalchemy import ForeignKey, Integer, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base

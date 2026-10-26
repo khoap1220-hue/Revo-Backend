@@ -48,16 +48,18 @@ class ProductInventoryBase(BaseModel):
 
     @model_validator(mode="after")
     def validate_quantities_and_dates(self) -> "ProductInventoryBase":
-        """Validate that reserved stock does not exceed total stock and season dates are paired."""
+        """Validate reserved stock <= total stock and paired season dates."""
         if self.reserved_quantity > self.stock_quantity:
             raise ValueError("reserved_quantity cannot exceed stock_quantity")
         if (self.season_start is None) ^ (self.season_end is None):
-            raise ValueError("Both season_start and season_end must be provided together")
+            raise ValueError(
+                "Both season_start and season_end must be provided together"
+            )
         return self
 
 
 class ProductInventoryCreate(ProductInventoryBase):
-    """Schema for creating a product inventory record with optional seasonal windows."""
+    """Schema for creating a product inventory record with seasonal windows."""
 
     seasonal_windows: Optional[List[SeasonalWindowCreate]] = None
 
@@ -75,7 +77,7 @@ class ProductInventoryUpdate(BaseModel):
 
 
 class ProductInventoryResponse(ProductInventoryBase):
-    """Response schema representing a product inventory record and computed availability."""
+    """Response schema representing a product inventory record and availability."""
 
     id: UUID
     available_stock: int
@@ -88,7 +90,7 @@ class ProductInventoryResponse(ProductInventoryBase):
 
 
 class ProductAvailabilityFilter(BaseModel):
-    """Query filter criteria for listing products by status, seasonality, and stock."""
+    """Query filter criteria for listing products by status, season, and stock."""
 
     status: Optional[AvailabilityStatus] = None
     in_season_only: bool = False

@@ -1,5 +1,5 @@
 """
-Inventory service for managing product stock and automatic seasonal availability calculation.
+Inventory service for managing product stock and seasonal availability calculation.
 """
 
 from datetime import date
@@ -32,9 +32,9 @@ class InventoryService:
         reference_date: Optional[date] = None,
     ) -> bool:
         """
-        Check whether ``reference_date`` falls within the annual window ``[season_start, season_end]``.
-        Compares ``(month, day)`` consistently for both same-year ranges (e.g. May to August)
-        and wrap-around ranges across the calendar year boundary (e.g. November to February).
+        Check whether ``reference_date`` falls within ``[season_start, season_end]``.
+        Compares ``(month, day)`` consistently for both same-year ranges and
+        wrap-around ranges across the calendar year boundary.
         """
         if season_start is None or season_end is None:
             return True
@@ -83,8 +83,8 @@ class InventoryService:
         reference_date: Optional[date] = None,
     ) -> bool:
         """
-        Evaluate whether ``inventory`` is in season on ``reference_date`` using top-level
-        ``season_start``/``season_end`` when present, or ``inventory.seasonal_windows`` otherwise.
+        Evaluate whether ``inventory`` is in season on ``reference_date`` using
+        top-level ``season_start``/``season_end`` or ``inventory.seasonal_windows``.
         """
         check_date = reference_date or date.today()
         if inventory.season_start is not None and inventory.season_end is not None:
@@ -115,9 +115,9 @@ class InventoryService:
         """
         Automatically calculate product availability status:
         - ``coming_soon``: Seasonal product prior to its upcoming annual start date.
-        - ``out_of_season``: Seasonal product outside its active harvest window after season end.
-        - ``out_of_stock``: Product is in season (or non-seasonal) but available stock <= 0.
-        - ``available``: Product is in season (or non-seasonal) and has available stock > 0.
+        - ``out_of_season``: Seasonal product outside its active harvest window.
+        - ``out_of_stock``: Product is in season (or non-seasonal) with stock <= 0.
+        - ``available``: Product is in season (or non-seasonal) with stock > 0.
         """
         check_date = reference_date or date.today()
         windows = list(seasonal_windows) if seasonal_windows else []
@@ -161,7 +161,7 @@ class InventoryService:
         inventory: ProductInventory,
         reference_date: Optional[date] = None,
     ) -> AvailabilityStatus:
-        """Compute availability status for ``inventory`` without mutating tracked ORM state."""
+        """Compute availability status without mutating tracked ORM state."""
         windows = inventory.__dict__.get("seasonal_windows") or []
         return cls.calculate_availability_status(
             stock_quantity=inventory.stock_quantity or 0,
@@ -179,7 +179,7 @@ class InventoryService:
         inventory: ProductInventory,
         reference_date: Optional[date] = None,
     ) -> AvailabilityStatus:
-        """Recalculate and update the ``status`` attribute on a ``ProductInventory`` instance."""
+        """Recalculate and update the ``status`` attribute on ``inventory``."""
         new_status = cls.get_inventory_status(inventory, reference_date=reference_date)
         inventory.status = new_status
         return new_status
@@ -190,7 +190,7 @@ class InventoryService:
         inventories: Iterable[ProductInventory],
         criteria: ProductAvailabilityFilter,
     ) -> List[ProductInventory]:
-        """Filter an iterable of inventory records by availability status, season, and minimum stock."""
+        """Filter inventory records by availability status, season, and stock."""
         ref_date = criteria.reference_date or date.today()
         matched: List[ProductInventory] = []
         for inv in inventories:
@@ -201,7 +201,10 @@ class InventoryService:
                 inv, reference_date=ref_date
             ):
                 continue
-            if criteria.min_stock is not None and inv.available_stock < criteria.min_stock:
+            if (
+                criteria.min_stock is not None
+                and inv.available_stock < criteria.min_stock
+            ):
                 continue
             matched.append(inv)
         return matched
@@ -213,7 +216,7 @@ class InventoryService:
         data: ProductInventoryCreate,
         reference_date: Optional[date] = None,
     ) -> ProductInventory:
-        """Create a new product inventory record and compute its initial availability status."""
+        """Create a product inventory record and compute its initial status."""
         payload = data.model_dump(exclude={"seasonal_windows"})
         inventory = ProductInventory(**payload)
 
@@ -237,7 +240,7 @@ class InventoryService:
         product_id: UUID,
         reference_date: Optional[date] = None,
     ) -> Optional[ProductInventory]:
-        """Retrieve inventory for a product without dirtying tracked session state."""
+        """Retrieve inventory for a product without dirtying session state."""
         result = await db.execute(
             select(ProductInventory)
             .where(ProductInventory.product_id == product_id)
@@ -280,7 +283,7 @@ class InventoryService:
         data: ProductInventoryUpdate,
         reference_date: Optional[date] = None,
     ) -> ProductInventory:
-        """Update stock or seasonal window fields safely and recalculate availability status."""
+        """Update stock or seasonal window fields safely and recalculate status."""
         inventory = await cls._reload_inventory(db, inventory, lock=True)
 
         updates = data.model_dump(exclude_unset=True)
@@ -302,7 +305,9 @@ class InventoryService:
         if (reserved or 0) > (stock or 0):
             raise ValueError("reserved_quantity cannot exceed stock_quantity")
         if (season_start is None) ^ (season_end is None):
-            raise ValueError("Both season_start and season_end must be provided together")
+            raise ValueError(
+                "Both season_start and season_end must be provided together"
+            )
 
         for key, value in updates.items():
             setattr(inventory, key, value)
@@ -320,7 +325,7 @@ class InventoryService:
         delta: int,
         reference_date: Optional[date] = None,
     ) -> ProductInventory:
-        """Increment or decrement product stock with row locking and recalculate status."""
+        """Increment or decrement product stock with row locking and sync status."""
         inventory = await cls._reload_inventory(db, inventory, lock=True)
         new_quantity = (inventory.stock_quantity or 0) + delta
         if new_quantity < 0:
@@ -340,7 +345,7 @@ class InventoryService:
         db: AsyncSession,
         criteria: Optional[ProductAvailabilityFilter] = None,
     ) -> List[ProductInventory]:
-        """Query product inventories and apply availability and seasonal filters without mutating ORM state."""
+        """Query product inventories and apply availability filters."""
         result = await db.execute(
             select(ProductInventory).options(
                 selectinload(ProductInventory.seasonal_windows)

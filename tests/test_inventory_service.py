@@ -1,10 +1,11 @@
 """
-Unit tests for product inventory, seasonal availability detection, and availability filtering.
+Unit tests for product inventory, seasonal availability, and filtering.
 """
 
+import uuid
 from datetime import date
 from unittest.mock import AsyncMock, MagicMock
-import uuid
+
 import pytest
 
 from app.models.products.inventory import (
@@ -22,8 +23,8 @@ from app.schemas.product import (
 from app.services.inventory_service import InventoryService
 
 
-def test_product_displays_current_stock_correctly():
-    """Verify available_stock calculation, in_season property, and status synchronization."""
+def test_product_displays_current_stock_correctly() -> None:
+    """Verify available_stock calculation, in_season, and status sync."""
     inv = ProductInventory(
         id=uuid.uuid4(),
         product_id=uuid.uuid4(),
@@ -44,11 +45,13 @@ def test_product_displays_current_stock_correctly():
     assert response.in_season is True
 
     inv.stock_quantity = 12
-    assert InventoryService.sync_inventory_status(inv) == AvailabilityStatus.OUT_OF_STOCK
+    assert (
+        InventoryService.sync_inventory_status(inv) == AvailabilityStatus.OUT_OF_STOCK
+    )
 
 
-def test_system_automatically_detects_if_product_is_in_season():
-    """Verify coming_soon, available, out_of_stock, and out_of_season for same-year seasons."""
+def test_system_automatically_detects_if_product_is_in_season() -> None:
+    """Verify coming_soon, available, out_of_stock, and out_of_season statuses."""
     season_start = date(2026, 5, 1)
     season_end = date(2026, 8, 31)
 
@@ -89,20 +92,23 @@ def test_system_automatically_detects_if_product_is_in_season():
     assert status_after == AvailabilityStatus.OUT_OF_SEASON
 
 
-def test_wrap_around_annual_season_and_future_reference_years():
-    """Verify November-to-February wrap-around season across 2026-2027 and later reference years."""
+def test_wrap_around_annual_season_and_future_reference_years() -> None:
+    """Verify Nov-to-Feb wrap-around season across 2026-2027 and later years."""
     season_start = date(2026, 11, 1)
     season_end = date(2027, 2, 28)
 
-    assert InventoryService.is_date_in_season(
-        season_start, season_end, date(2026, 12, 15)
-    ) is True
-    assert InventoryService.is_date_in_season(
-        season_start, season_end, date(2028, 1, 20)
-    ) is True
-    assert InventoryService.is_date_in_season(
-        season_start, season_end, date(2027, 10, 15)
-    ) is False
+    assert (
+        InventoryService.is_date_in_season(season_start, season_end, date(2026, 12, 15))
+        is True
+    )
+    assert (
+        InventoryService.is_date_in_season(season_start, season_end, date(2028, 1, 20))
+        is True
+    )
+    assert (
+        InventoryService.is_date_in_season(season_start, season_end, date(2027, 10, 15))
+        is False
+    )
 
     # Approaching next annual start in a later year -> COMING_SOON
     assert (
@@ -129,8 +135,8 @@ def test_wrap_around_annual_season_and_future_reference_years():
     )
 
 
-def test_availability_filters_work_in_product_queries():
-    """Verify status, in_season_only, min_stock, and seasonal_windows filtering without mutating ORM state."""
+def test_availability_filters_work_in_product_queries() -> None:
+    """Verify status, in_season_only, min_stock, and seasonal_windows filtering."""
     ref = date(2026, 6, 15)
     window_item = ProductInventory(
         product_id=uuid.uuid4(),
@@ -192,7 +198,9 @@ def test_availability_filters_work_in_product_queries():
 
     available_only = InventoryService.filter_inventories(
         items,
-        ProductAvailabilityFilter(status=AvailabilityStatus.AVAILABLE, reference_date=ref),
+        ProductAvailabilityFilter(
+            status=AvailabilityStatus.AVAILABLE, reference_date=ref
+        ),
     )
     assert [i.product_name for i in available_only] == [
         "In-Season Strawberries",
@@ -203,24 +211,30 @@ def test_availability_filters_work_in_product_queries():
 
     in_season_min_stock = InventoryService.filter_inventories(
         items,
-        ProductAvailabilityFilter(in_season_only=True, min_stock=20, reference_date=ref),
+        ProductAvailabilityFilter(
+            in_season_only=True, min_stock=20, reference_date=ref
+        ),
     )
     assert [i.product_name for i in in_season_min_stock] == ["In-Season Strawberries"]
 
     coming_soon_only = InventoryService.filter_inventories(
         items,
-        ProductAvailabilityFilter(status=AvailabilityStatus.COMING_SOON, reference_date=ref),
+        ProductAvailabilityFilter(
+            status=AvailabilityStatus.COMING_SOON, reference_date=ref
+        ),
     )
     assert [i.product_name for i in coming_soon_only] == ["Autumn Pumpkins"]
 
     out_of_season_only = InventoryService.filter_inventories(
         items,
-        ProductAvailabilityFilter(status=AvailabilityStatus.OUT_OF_SEASON, reference_date=ref),
+        ProductAvailabilityFilter(
+            status=AvailabilityStatus.OUT_OF_SEASON, reference_date=ref
+        ),
     )
     assert [i.product_name for i in out_of_season_only] == ["Spring Asparagus"]
 
 
-def test_schema_validation_rejects_invalid_reservation():
+def test_schema_validation_rejects_invalid_reservation() -> None:
     """Verify ProductInventoryCreate rejects reserved_quantity > stock_quantity."""
     with pytest.raises(ValueError):
         ProductInventoryCreate(
@@ -231,8 +245,8 @@ def test_schema_validation_rejects_invalid_reservation():
 
 
 @pytest.mark.asyncio
-async def test_async_create_update_adjust_and_list_inventory():
-    """Verify async create, update validation, adjust_stock row locking, and list_by_availability."""
+async def test_async_create_update_adjust_and_list_inventory() -> None:
+    """Verify async create, update validation, adjust_stock, and list."""
     db = AsyncMock()
     db.add = MagicMock()
 
@@ -257,7 +271,9 @@ async def test_async_create_update_adjust_and_list_inventory():
     assert len(created.seasonal_windows) == 1
 
     # Reject invalid update before mutating ORM instance
-    with pytest.raises(ValueError, match="reserved_quantity cannot exceed stock_quantity"):
+    with pytest.raises(
+        ValueError, match="reserved_quantity cannot exceed stock_quantity"
+    ):
         await InventoryService.update(
             db,
             created,
