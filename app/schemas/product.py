@@ -80,7 +80,7 @@ class ProductInventoryResponse(ProductInventoryBase):
     id: UUID
     available_stock: int
     status: AvailabilityStatus
-    in_season: bool
+    in_season: bool = True
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
