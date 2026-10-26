@@ -2,10 +2,10 @@
 OrderItem model representing line items within an Order or temporary shopping cart.
 """
 
-from datetime import datetime
-from decimal import Decimal, ROUND_HALF_UP
-from typing import TYPE_CHECKING, Union
 import uuid
+from datetime import datetime
+from decimal import ROUND_HALF_UP, Decimal
+from typing import TYPE_CHECKING, Any, Union
 from uuid import UUID
 
 from sqlalchemy import (
@@ -67,7 +67,7 @@ class OrderItem(Base):
 
     order: Mapped["Order"] = relationship("Order", back_populates="items")
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         quantity = kwargs.get("quantity", 1)
         if quantity is None or int(quantity) <= 0:
             raise ValueError("OrderItem quantity must be greater than zero")
@@ -84,5 +84,5 @@ class OrderItem(Base):
 
     @property
     def subtotal(self) -> Decimal:
-        """Calculate line item subtotal (quantity * unit_price) rounded to 2 decimal places."""
+        """Calculate line item subtotal rounded to 2 decimal places."""
         return _to_money(Decimal(self.quantity) * _to_money(self.unit_price))

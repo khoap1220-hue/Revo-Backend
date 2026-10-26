@@ -14,9 +14,11 @@ from app.models.users.user import User, UserType
 
 
 class TestOrderAndCartModels:
-    """Test suite for Order, OrderItem, temporary cart operations, and status transitions."""
+    """Test suite for Order, OrderItem, cart operations, and status transitions."""
 
-    async def test_buyer_can_create_draft_cart_and_persist_order(self, db_session: AsyncSession):
+    async def test_buyer_can_create_draft_cart_and_persist_order(
+        self, db_session: AsyncSession
+    ) -> None:
         """Buyers can create orders starting as a temporary cart (status=draft)."""
         buyer = User(
             username=f"buyer_{uuid4().hex[:8]}",
@@ -55,7 +57,7 @@ class TestOrderAndCartModels:
         assert order.status == OrderStatus.DRAFT
         assert order.total_amount == Decimal("40.75")
 
-    def test_order_items_calculated_correctly_and_cart_mutations(self):
+    def test_order_items_calculated_correctly_and_cart_mutations(self) -> None:
         """Order items and cart quantity updates recalculate totals accurately."""
         buyer_id = uuid4()
         product_1 = uuid4()
@@ -85,8 +87,8 @@ class TestOrderAndCartModels:
         assert removed is True
         assert cart.total_amount == Decimal("15.00")
 
-    def test_order_status_transitions_work_as_expected(self):
-        """Valid lifecycle transitions succeed and invalid transitions raise ValueError."""
+    def test_order_status_transitions_work_as_expected(self) -> None:
+        """Valid lifecycle transitions succeed and invalid ones raise ValueError."""
         order = Order(
             buyer_id=uuid4(),
             shipping_address="Cartago, Costa Rica",
@@ -109,8 +111,8 @@ class TestOrderAndCartModels:
         with pytest.raises(ValueError, match="Invalid order status transition"):
             order.transition_to(OrderStatus.CANCELLED)
 
-    def test_checkout_validation_and_cancellation(self):
-        """Empty cart or missing shipping address cannot transition from draft to pending."""
+    def test_checkout_validation_and_cancellation(self) -> None:
+        """Empty cart or missing address cannot transition from draft to pending."""
         empty_cart = Order(buyer_id=uuid4(), shipping_address="Alajuela, Costa Rica")
         with pytest.raises(ValueError, match="empty draft cart"):
             empty_cart.transition_to(OrderStatus.PENDING)
@@ -123,16 +125,27 @@ class TestOrderAndCartModels:
         # Cancellation from pending succeeds
         no_address_cart.shipping_address = "Alajuela, Costa Rica"
         no_address_cart.transition_to(OrderStatus.PENDING)
-        assert no_address_cart.transition_to(OrderStatus.CANCELLED) == OrderStatus.CANCELLED
+        assert (
+            no_address_cart.transition_to(OrderStatus.CANCELLED)
+            == OrderStatus.CANCELLED
+        )
 
-    def test_order_item_validation_guards(self):
+    def test_order_item_validation_guards(self) -> None:
         """OrderItem rejects non-positive quantities and negative unit prices."""
         with pytest.raises(ValueError, match="quantity must be greater than zero"):
-            OrderItem(order_id=uuid4(), product_id=uuid4(), quantity=0, unit_price="10.00")
+            OrderItem(
+                order_id=uuid4(), product_id=uuid4(), quantity=0, unit_price="10.00"
+            )
 
         with pytest.raises(ValueError, match="unit_price cannot be negative"):
-            OrderItem(order_id=uuid4(), product_id=uuid4(), quantity=1, unit_price="-5.00")
+            OrderItem(
+                order_id=uuid4(), product_id=uuid4(), quantity=1, unit_price="-5.00"
+            )
 
         cart = Order(buyer_id=uuid4(), shipping_address="San Jose")
         with pytest.raises(ValueError, match="quantity must be greater than zero"):
-            cart.add_item(product_id=uuid4(), quantity=1.5, unit_price="10.00")  # type: ignore[arg-type]
+            cart.add_item(
+                product_id=uuid4(),
+                quantity=1.5,  # type: ignore[arg-type]
+                unit_price="10.00",
+            )

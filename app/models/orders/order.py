@@ -2,14 +2,16 @@
 Order and temporary shopping cart model for Farmers Marketplace.
 """
 
-from datetime import datetime
-from decimal import Decimal, ROUND_HALF_UP
-from enum import Enum
-from typing import TYPE_CHECKING, Dict, List, Optional, Set, Union
 import uuid
+from datetime import datetime
+from decimal import ROUND_HALF_UP, Decimal
+from enum import Enum
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Union
 from uuid import UUID
 
-from sqlalchemy import DateTime, Enum as SqlEnum, ForeignKey, Numeric, Text, func
+from sqlalchemy import DateTime
+from sqlalchemy import Enum as SqlEnum
+from sqlalchemy import ForeignKey, Numeric, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
@@ -94,10 +96,12 @@ class Order(Base):
         lazy="selectin",
     )
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         if "status" not in kwargs or kwargs["status"] is None:
             kwargs["status"] = OrderStatus.DRAFT
-        elif isinstance(kwargs["status"], str) and not isinstance(kwargs["status"], OrderStatus):
+        elif isinstance(kwargs["status"], str) and not isinstance(
+            kwargs["status"], OrderStatus
+        ):
             kwargs["status"] = OrderStatus(kwargs["status"].lower())
 
         if "total_amount" not in kwargs or kwargs["total_amount"] is None:
@@ -126,11 +130,13 @@ class Order(Base):
         quantity: int,
         unit_price: Union[Decimal, float, int, str],
     ) -> "OrderItem":
-        """Add or increment an item in a draft cart and recalculate the order total."""
+        """Add or increment an item in a draft cart and recalculate total."""
         from app.models.orders.order_item import OrderItem
 
         if not self.is_cart:
-            raise ValueError("Items can only be modified while the order is in draft (cart) status")
+            raise ValueError(
+                "Items can only be modified while the order is in draft (cart) status"
+            )
         if not isinstance(quantity, int) or isinstance(quantity, bool) or quantity <= 0:
             raise ValueError("Item quantity must be greater than zero")
 
@@ -155,10 +161,14 @@ class Order(Base):
         self.recalculate_total()
         return new_item
 
-    def update_item_quantity(self, product_id: UUID, quantity: int) -> Optional["OrderItem"]:
-        """Update the quantity of a product in the draft cart, removing it if quantity == 0."""
+    def update_item_quantity(
+        self, product_id: UUID, quantity: int
+    ) -> Optional["OrderItem"]:
+        """Update item quantity in draft cart, removing it when quantity == 0."""
         if not self.is_cart:
-            raise ValueError("Items can only be modified while the order is in draft (cart) status")
+            raise ValueError(
+                "Items can only be modified while the order is in draft (cart) status"
+            )
         if not isinstance(quantity, int) or isinstance(quantity, bool) or quantity < 0:
             raise ValueError("Item quantity cannot be negative")
 
@@ -177,7 +187,9 @@ class Order(Base):
     def remove_item(self, product_id: UUID) -> bool:
         """Remove an item by product_id from the draft cart and recalculate total."""
         if not self.is_cart:
-            raise ValueError("Items can only be modified while the order is in draft (cart) status")
+            raise ValueError(
+                "Items can only be modified while the order is in draft (cart) status"
+            )
 
         for existing in list(self.items):
             if existing.product_id == product_id:
@@ -204,7 +216,8 @@ class Order(Base):
         )
         if not self.can_transition_to(target):
             raise ValueError(
-                f"Invalid order status transition from '{self.status.value}' to '{target.value}'"
+                f"Invalid order status transition from "
+                f"'{self.status.value}' to '{target.value}'"
             )
 
         if self.status == OrderStatus.DRAFT and target == OrderStatus.PENDING:
