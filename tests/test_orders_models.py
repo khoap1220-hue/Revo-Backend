@@ -132,3 +132,7 @@ class TestOrderAndCartModels:
 
         with pytest.raises(ValueError, match="unit_price cannot be negative"):
             OrderItem(order_id=uuid4(), product_id=uuid4(), quantity=1, unit_price="-5.00")
+
+        cart = Order(buyer_id=uuid4(), shipping_address="San Jose")
+        with pytest.raises(ValueError, match="quantity must be greater than zero"):
+            cart.add_item(product_id=uuid4(), quantity=1.5, unit_price="10.00")  # type: ignore[arg-type]

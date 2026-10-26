@@ -131,7 +131,7 @@ class Order(Base):
 
         if not self.is_cart:
             raise ValueError("Items can only be modified while the order is in draft (cart) status")
-        if quantity <= 0:
+        if not isinstance(quantity, int) or isinstance(quantity, bool) or quantity <= 0:
             raise ValueError("Item quantity must be greater than zero")
 
         normalized_price = _to_money(unit_price)
@@ -159,7 +159,7 @@ class Order(Base):
         """Update the quantity of a product in the draft cart, removing it if quantity == 0."""
         if not self.is_cart:
             raise ValueError("Items can only be modified while the order is in draft (cart) status")
-        if quantity < 0:
+        if not isinstance(quantity, int) or isinstance(quantity, bool) or quantity < 0:
             raise ValueError("Item quantity cannot be negative")
 
         for existing in list(self.items):
